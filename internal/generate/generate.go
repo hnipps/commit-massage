@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/nicholls-inc/commit-massage/internal/log"
 	"github.com/nicholls-inc/commit-massage/internal/llm"
+	"github.com/nicholls-inc/commit-massage/internal/log"
 	"github.com/nicholls-inc/commit-massage/internal/prompt"
 )
 
-const maxDiffLen = 20000
+const maxDiffLen      = 20000
+const defaultTimeout  = 5 // seconds
 
 // Run generates a commit message and prepends it to msgFile.
 // source is the second argument passed to prepare-commit-msg by git.
@@ -47,7 +49,14 @@ func Run(msgFile, source string) error {
 
 	client := llm.NewClient(baseURL)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	timeout := defaultTimeout
+	if v := os.Getenv("COMMIT_MASSAGE_TIMEOUT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			timeout = n
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
 	spinner := log.Start("Generating commit message…")
@@ -58,7 +67,8 @@ func Run(msgFile, source string) error {
 	})
 	if err != nil {
 		spinner.Fail("Failed to generate commit message")
-		return err
+		fmt.Fprintf(os.Stderr, "commit-massage: %s\n", err)
+		return nil
 	}
 
 	spinner.Stop("Commit message generated")
