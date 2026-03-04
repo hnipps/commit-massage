@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	diffpkg "github.com/nicholls-inc/commit-massage/internal/diff"
 	"github.com/nicholls-inc/commit-massage/internal/llm"
 	"github.com/nicholls-inc/commit-massage/internal/log"
 	"github.com/nicholls-inc/commit-massage/internal/prompt"
@@ -38,9 +39,7 @@ func Run(msgFile, source string) error {
 		return fmt.Errorf("git diff --stat: %w", err)
 	}
 
-	if len(diff) > maxDiffLen {
-		diff = diff[:maxDiffLen] + "\n[diff truncated]"
-	}
+	diff = diffpkg.Process(diff, maxDiffLen)
 
 	// Fetch recent commit history for style context; silently skip on error
 	// (e.g. first commit in repo).
