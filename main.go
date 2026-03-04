@@ -33,6 +33,10 @@ func main() {
 			source = os.Args[3]
 		}
 		err = generate.Run(msgFile, source)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "commit-massage: %s\n", err)
+			os.Exit(0)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		fmt.Fprintln(os.Stderr, "usage: commit-massage <install|uninstall|generate> [args]")
