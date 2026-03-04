@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,7 +15,8 @@ import (
 	"github.com/nicholls-inc/commit-massage/internal/prompt"
 )
 
-const maxDiffLen = 20000
+const maxDiffLen      = 20000
+const defaultTimeout  = 5 // seconds
 
 // Run generates a commit message and prepends it to msgFile.
 // source is the second argument passed to prepare-commit-msg by git.
@@ -24,7 +26,7 @@ func Run(msgFile, source string) error {
 		return nil
 	}
 
-	diff, err := gitOutput("diff", "--cached")
+	diff, err := gitOutput("diff", "--cached", "--no-color", "--histogram")
 	if err != nil {
 		return fmt.Errorf("git diff: %w", err)
 	}
@@ -32,21 +34,36 @@ func Run(msgFile, source string) error {
 		return nil
 	}
 
-	stat, err := gitOutput("diff", "--cached", "--stat")
+	stat, err := gitOutput("diff", "--cached", "--stat", "--no-color")
 	if err != nil {
 		return fmt.Errorf("git diff --stat: %w", err)
 	}
 
 	diff = diffpkg.Process(diff, maxDiffLen)
 
+	// Fetch recent commit history for style context; silently skip on error
+	// (e.g. first commit in repo).
+	recentLog, _ := gitOutput("log", "--oneline", "-10")
+
 	model := envOrDefault("COMMIT_MASSAGE_MODEL", "google/gemma-3n-e4b")
 	baseURL := envOrDefault("COMMIT_MASSAGE_URL", "http://127.0.0.1:1234")
 
-	userMessage := "Files changed:\n" + stat + "\n\nDiff:\n" + diff
+	var userMessage string
+	if recentLog != "" {
+		userMessage = "Recent commits (for style reference):\n" + recentLog + "\n\n"
+	}
+	userMessage += "Files changed:\n" + stat + "\n\nDiff:\n" + diff
 
 	client := llm.NewClient(baseURL)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	timeout := defaultTimeout
+	if v := os.Getenv("COMMIT_MASSAGE_TIMEOUT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			timeout = n
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
 	spinner := log.Start("Generating commit message…")
@@ -57,7 +74,8 @@ func Run(msgFile, source string) error {
 	})
 	if err != nil {
 		spinner.Fail("Failed to generate commit message")
-		return err
+		fmt.Fprintf(os.Stderr, "commit-massage: %s\n", err)
+		return nil
 	}
 
 	spinner.Stop("Commit message generated")
