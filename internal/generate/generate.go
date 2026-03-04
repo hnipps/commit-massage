@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nicholls-inc/commit-massage/internal/log"
+	diffpkg "github.com/nicholls-inc/commit-massage/internal/diff"
 	"github.com/nicholls-inc/commit-massage/internal/llm"
+	"github.com/nicholls-inc/commit-massage/internal/log"
 	"github.com/nicholls-inc/commit-massage/internal/prompt"
 )
 
@@ -36,9 +37,7 @@ func Run(msgFile, source string) error {
 		return fmt.Errorf("git diff --stat: %w", err)
 	}
 
-	if len(diff) > maxDiffLen {
-		diff = diff[:maxDiffLen] + "\n[diff truncated]"
-	}
+	diff = diffpkg.Process(diff, maxDiffLen)
 
 	model := envOrDefault("COMMIT_MASSAGE_MODEL", "google/gemma-3n-e4b")
 	baseURL := envOrDefault("COMMIT_MASSAGE_URL", "http://127.0.0.1:1234")
