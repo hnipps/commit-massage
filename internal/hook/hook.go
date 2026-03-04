@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/nicholls-inc/commit-massage/internal/log"
 	"github.com/nicholls-inc/commit-massage/internal/prompt"
 )
 
@@ -43,11 +44,29 @@ Files changed:
 Diff:
 '"$DIFF"
 
+# Spinner while generating
+spin() {
+  set -- "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏"
+  while :; do
+    for f; do printf '\r  %s Generating commit message...' "$f"; sleep 0.08; done
+  done
+}
+spin &
+SPIN_PID=$!
+trap 'kill $SPIN_PID 2>/dev/null' EXIT
+
 MSG=$(printf '%s' "$PROMPT" | gemini -p "Generate a commit message based on the instructions and diff provided via stdin." 2>/dev/null)
 
+kill $SPIN_PID 2>/dev/null
+trap - EXIT
+wait $SPIN_PID 2>/dev/null
+
 if [ -n "$MSG" ]; then
+  printf '\r\033[K  ✓ Generated commit message\n'
   EXISTING=$(cat "$MSG_FILE")
   printf '%s\n%s' "$MSG" "$EXISTING" > "$MSG_FILE"
+else
+  printf '\r\033[K  ✗ Failed to generate commit message\n'
 fi
 `
 
@@ -74,57 +93,76 @@ func hooksDir() (string, error) {
 // Install writes the prepare-commit-msg hook script. If force is false,
 // it refuses to overwrite an existing hook file.
 func Install(force bool) error {
+	s := log.Start("Locating git hooks directory...")
 	dir, err := hooksDir()
 	if err != nil {
+		s.Fail("Not a git repository")
 		return err
 	}
+	s.Stop("Found hooks directory")
 
 	hookPath := filepath.Join(dir, hookName)
 
 	if !force {
+		s = log.Start("Checking for existing hook...")
 		if _, err := os.Stat(hookPath); err == nil {
+			s.Fail("Hook already exists")
 			return fmt.Errorf("hook already exists at %s (use --force to overwrite)", hookPath)
 		}
+		s.Stop("No conflicting hook found")
 	}
 
+	s = log.Start("Writing hook script...")
 	if err := os.MkdirAll(dir, 0755); err != nil {
+		s.Fail("Could not create hooks directory")
 		return fmt.Errorf("could not create hooks directory: %w", err)
 	}
 
 	if err := os.WriteFile(hookPath, []byte(scriptTemplate), 0755); err != nil {
+		s.Fail("Could not write hook")
 		return fmt.Errorf("could not write hook: %w", err)
 	}
+	s.Stop(fmt.Sprintf("Installed hook at %s", hookPath))
 
-	fmt.Printf("Installed prepare-commit-msg hook at %s\n", hookPath)
 	return nil
 }
 
 // Uninstall removes the prepare-commit-msg hook, but only if it was
 // installed by commit-massage (identified by the marker comment).
 func Uninstall() error {
+	s := log.Start("Locating git hooks directory...")
 	dir, err := hooksDir()
 	if err != nil {
+		s.Fail("Not a git repository")
 		return err
 	}
+	s.Stop("Found hooks directory")
 
 	hookPath := filepath.Join(dir, hookName)
 
+	s = log.Start("Verifying hook ownership...")
 	data, err := os.ReadFile(hookPath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			s.Fail("No hook found")
 			return fmt.Errorf("no prepare-commit-msg hook found")
 		}
+		s.Fail("Could not read hook")
 		return fmt.Errorf("could not read hook: %w", err)
 	}
 
 	if !strings.Contains(string(data), marker) {
+		s.Fail("Hook not owned by commit-massage")
 		return fmt.Errorf("hook at %s was not installed by commit-massage, refusing to remove", hookPath)
 	}
+	s.Stop("Hook belongs to commit-massage")
 
+	s = log.Start("Removing hook...")
 	if err := os.Remove(hookPath); err != nil {
+		s.Fail("Could not remove hook")
 		return fmt.Errorf("could not remove hook: %w", err)
 	}
+	s.Stop(fmt.Sprintf("Removed hook from %s", hookPath))
 
-	fmt.Printf("Removed prepare-commit-msg hook from %s\n", hookPath)
 	return nil
 }
