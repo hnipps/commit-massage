@@ -8,67 +8,9 @@ import (
 	"strings"
 
 	"github.com/nicholls-inc/commit-massage/internal/log"
-	"github.com/nicholls-inc/commit-massage/internal/prompt"
 )
 
 const marker = "commit-massage"
-
-var scriptTemplate = `#!/bin/sh
-# ` + marker + `: AI-generated conventional commits via Gemini CLI
-
-MSG_FILE="$1"
-SOURCE="$2"
-
-# Skip when user provides their own message or git generates one
-case "$SOURCE" in
-  message|merge|squash) exit 0 ;;
-esac
-
-DIFF=$(git diff --cached)
-[ -z "$DIFF" ] && exit 0
-
-STAT=$(git diff --cached --stat)
-
-# Truncate large diffs (keep first ~20000 chars)
-if [ ${#DIFF} -gt 20000 ]; then
-  DIFF=$(printf '%s' "$DIFF" | head -c 20000)
-  DIFF="${DIFF}
-[diff truncated]"
-fi
-
-PROMPT='` + prompt.Text + `
-
-Files changed:
-'"$STAT"'
-
-Diff:
-'"$DIFF"
-
-# Spinner while generating
-spin() {
-  set -- "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏"
-  while :; do
-    for f; do printf '\r  %s Generating commit message...' "$f"; sleep 0.08; done
-  done
-}
-spin &
-SPIN_PID=$!
-trap 'kill $SPIN_PID 2>/dev/null' EXIT
-
-MSG=$(printf '%s' "$PROMPT" | gemini -p "Generate a commit message based on the instructions and diff provided via stdin." 2>/dev/null)
-
-kill $SPIN_PID 2>/dev/null
-trap - EXIT
-wait $SPIN_PID 2>/dev/null
-
-if [ -n "$MSG" ]; then
-  printf '\r\033[K  ✓ Generated commit message\n'
-  EXISTING=$(cat "$MSG_FILE")
-  printf '%s\n%s' "$MSG" "$EXISTING" > "$MSG_FILE"
-else
-  printf '\r\033[K  ✗ Failed to generate commit message\n'
-fi
-`
 
 const hookName = "prepare-commit-msg"
 
@@ -112,13 +54,24 @@ func Install(force bool) error {
 		s.Stop("No conflicting hook found")
 	}
 
+	binPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("could not determine executable path: %w", err)
+	}
+	binPath, err = filepath.EvalSymlinks(binPath)
+	if err != nil {
+		return fmt.Errorf("could not resolve executable path: %w", err)
+	}
+
+	script := fmt.Sprintf("#!/bin/sh\n# %s: AI-generated conventional commits via Ollama\nexec %s generate \"$1\" \"$2\"\n", marker, binPath)
+
 	s = log.Start("Writing hook script...")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		s.Fail("Could not create hooks directory")
 		return fmt.Errorf("could not create hooks directory: %w", err)
 	}
 
-	if err := os.WriteFile(hookPath, []byte(scriptTemplate), 0755); err != nil {
+	if err := os.WriteFile(hookPath, []byte(script), 0755); err != nil {
 		s.Fail("Could not write hook")
 		return fmt.Errorf("could not write hook: %w", err)
 	}

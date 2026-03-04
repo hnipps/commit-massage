@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nicholls-inc/commit-massage/internal/generate"
 	"github.com/nicholls-inc/commit-massage/internal/hook"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: commit-massage <install|uninstall> [--force]")
+		fmt.Fprintln(os.Stderr, "usage: commit-massage <install|uninstall|generate> [args]")
 		os.Exit(1)
 	}
 
@@ -21,9 +22,20 @@ func main() {
 		err = hook.Install(force)
 	case "uninstall":
 		err = hook.Uninstall()
+	case "generate":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: commit-massage generate <msg-file> [source]")
+			os.Exit(1)
+		}
+		msgFile := os.Args[2]
+		var source string
+		if len(os.Args) > 3 {
+			source = os.Args[3]
+		}
+		err = generate.Run(msgFile, source)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
-		fmt.Fprintln(os.Stderr, "usage: commit-massage <install|uninstall> [--force]")
+		fmt.Fprintln(os.Stderr, "usage: commit-massage <install|uninstall|generate> [args]")
 		os.Exit(1)
 	}
 

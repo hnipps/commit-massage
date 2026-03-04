@@ -1,6 +1,6 @@
 package prompt
 
-// Text is the system prompt sent to Gemini for generating conventional commit messages.
+// Text is the system prompt sent to the LLM for generating conventional commit messages.
 const Text = `You are a commit message generator. Given a git diff, produce a single conventional commit message.
 
 Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore
