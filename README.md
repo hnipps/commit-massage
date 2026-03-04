@@ -1,19 +1,14 @@
 # commit-massage
 
-AI-generated conventional commit messages using a local LLM via [Ollama](https://ollama.com).
+AI-generated conventional commit messages using a local LLM via an OpenAI-compatible API.
 
 Installs a `prepare-commit-msg` git hook that automatically generates a commit message from your staged changes. Runs entirely locally — no cloud APIs, no latency.
 
 ## Prerequisites
 
 - [Go](https://go.dev) 1.25+
-- [Ollama](https://ollama.com) installed and running
-- A pulled model (default: `gemma3:1b`)
-
-```sh
-ollama serve        # start the server (if not already running)
-ollama pull gemma3:1b # pull the default model
-```
+- A local OpenAI-compatible API server (e.g. [LM Studio](https://lmstudio.ai)) running at `http://127.0.0.1:1234`
+- A loaded model (default: `google/gemma-3n-e4b`)
 
 ## Install
 
@@ -57,8 +52,8 @@ commit-massage uninstall
 
 | Environment Variable | Default | Description |
 |---|---|---|
-| `COMMIT_MASSAGE_MODEL` | `gemma3:1b` | Ollama model to use |
-| `COMMIT_MASSAGE_OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `COMMIT_MASSAGE_MODEL` | `google/gemma-3n-e4b` | Model to use |
+| `COMMIT_MASSAGE_URL` | `http://127.0.0.1:1234` | OpenAI-compatible API server URL |
 
 ## Commands
 

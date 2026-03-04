@@ -63,7 +63,7 @@ func Install(force bool) error {
 		return fmt.Errorf("could not resolve executable path: %w", err)
 	}
 
-	script := fmt.Sprintf("#!/bin/sh\n# %s: AI-generated conventional commits via Ollama\nexec %s generate \"$1\" \"$2\"\n", marker, binPath)
+	script := fmt.Sprintf("#!/bin/sh\n# %s: AI-generated conventional commits\nexec %s generate \"$1\" \"$2\"\n", marker, binPath)
 
 	s = log.Start("Writing hook script...")
 	if err := os.MkdirAll(dir, 0755); err != nil {
