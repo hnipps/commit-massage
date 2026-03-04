@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/nicholls-inc/commit-massage/internal/log"
-	"github.com/nicholls-inc/commit-massage/internal/ollama"
+	"github.com/nicholls-inc/commit-massage/internal/llm"
 	"github.com/nicholls-inc/commit-massage/internal/prompt"
 )
 
@@ -40,19 +40,19 @@ func Run(msgFile, source string) error {
 		diff = diff[:maxDiffLen] + "\n[diff truncated]"
 	}
 
-	model := envOrDefault("COMMIT_MASSAGE_MODEL", "gemma3:1b")
-	baseURL := envOrDefault("COMMIT_MASSAGE_OLLAMA_URL", "http://localhost:11434")
+	model := envOrDefault("COMMIT_MASSAGE_MODEL", "google/gemma-3n-e4b")
+	baseURL := envOrDefault("COMMIT_MASSAGE_URL", "http://127.0.0.1:1234")
 
 	userMessage := "Files changed:\n" + stat + "\n\nDiff:\n" + diff
 
-	client := ollama.NewClient(baseURL)
+	client := llm.NewClient(baseURL)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	spinner := log.Start("Generating commit message…")
 
-	msg, err := client.Chat(ctx, model, []ollama.Message{
+	msg, err := client.Chat(ctx, model, []llm.Message{
 		{Role: "system", Content: prompt.Text},
 		{Role: "user", Content: userMessage},
 	})
