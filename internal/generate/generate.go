@@ -23,7 +23,7 @@ func Run(msgFile, source string) error {
 		return nil
 	}
 
-	diff, err := gitOutput("diff", "--cached")
+	diff, err := gitOutput("diff", "--cached", "--no-color", "--histogram")
 	if err != nil {
 		return fmt.Errorf("git diff: %w", err)
 	}
@@ -31,7 +31,7 @@ func Run(msgFile, source string) error {
 		return nil
 	}
 
-	stat, err := gitOutput("diff", "--cached", "--stat")
+	stat, err := gitOutput("diff", "--cached", "--stat", "--no-color")
 	if err != nil {
 		return fmt.Errorf("git diff --stat: %w", err)
 	}
