@@ -40,10 +40,18 @@ func Run(msgFile, source string) error {
 		diff = diff[:maxDiffLen] + "\n[diff truncated]"
 	}
 
+	// Fetch recent commit history for style context; silently skip on error
+	// (e.g. first commit in repo).
+	recentLog, _ := gitOutput("log", "--oneline", "-10")
+
 	model := envOrDefault("COMMIT_MASSAGE_MODEL", "google/gemma-3n-e4b")
 	baseURL := envOrDefault("COMMIT_MASSAGE_URL", "http://127.0.0.1:1234")
 
-	userMessage := "Files changed:\n" + stat + "\n\nDiff:\n" + diff
+	var userMessage string
+	if recentLog != "" {
+		userMessage = "Recent commits (for style reference):\n" + recentLog + "\n\n"
+	}
+	userMessage += "Files changed:\n" + stat + "\n\nDiff:\n" + diff
 
 	client := llm.NewClient(baseURL)
 
