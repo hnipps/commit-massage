@@ -55,6 +55,18 @@ commit-massage uninstall
 | `COMMIT_MASSAGE_MODEL` | `google/gemma-3n-e4b` | Model to use |
 | `COMMIT_MASSAGE_URL` | `http://127.0.0.1:1234` | OpenAI-compatible API server URL |
 
+## Training Data Preparation
+
+If you're fine-tuning your own model for commit message generation, the `prepare-training` command converts [CommitBench](https://huggingface.co/datasets/Maxscha/commitbench) JSONL into training-ready data that matches the exact prompt format used at inference time:
+
+```sh
+commit-massage prepare-training commitbench.jsonl training.jsonl
+```
+
+This applies the same diff preprocessing used during inference (noise filtering, file importance ranking, smart truncation), derives file change stats, and outputs OpenAI chat completion JSONL. Entries with only noise (lock files, generated code, etc.) are automatically skipped. Progress stats are reported to stderr.
+
+See [docs/guides/mlx-fine-tuning.md](docs/guides/mlx-fine-tuning.md) for a complete guide on fine-tuning with MLX on Apple Silicon.
+
 ## Commands
 
 | Command | Description |
@@ -62,3 +74,4 @@ commit-massage uninstall
 | `commit-massage install [--force]` | Install the git hook |
 | `commit-massage uninstall` | Remove the git hook |
 | `commit-massage generate <file> [source]` | Generate a commit message (called by the hook) |
+| `commit-massage prepare-training <in> <out>` | Prepare CommitBench JSONL for fine-tuning |
