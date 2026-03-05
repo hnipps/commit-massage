@@ -6,11 +6,12 @@ import (
 
 	"github.com/nicholls-inc/commit-massage/internal/generate"
 	"github.com/nicholls-inc/commit-massage/internal/hook"
+	"github.com/nicholls-inc/commit-massage/internal/training"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: commit-massage <install|uninstall|generate> [args]")
+		fmt.Fprintln(os.Stderr, "usage: commit-massage <install|uninstall|generate|prepare-training> [args]")
 		os.Exit(1)
 	}
 
@@ -37,9 +38,15 @@ func main() {
 			fmt.Fprintf(os.Stderr, "commit-massage: %s\n", err)
 			os.Exit(0)
 		}
+	case "prepare-training":
+		if len(os.Args) < 4 {
+			fmt.Fprintln(os.Stderr, "usage: commit-massage prepare-training <input.jsonl> <output.jsonl>")
+			os.Exit(1)
+		}
+		err = training.Run(os.Args[2], os.Args[3])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
-		fmt.Fprintln(os.Stderr, "usage: commit-massage <install|uninstall|generate> [args]")
+		fmt.Fprintln(os.Stderr, "usage: commit-massage <install|uninstall|generate|prepare-training> [args]")
 		os.Exit(1)
 	}
 

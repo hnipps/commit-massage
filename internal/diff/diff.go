@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// MaxLen is the default character budget for processed diffs.
+const MaxLen = 20000
+
 // section represents one file's portion of a unified diff.
 type section struct {
 	path    string
