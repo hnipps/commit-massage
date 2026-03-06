@@ -15,9 +15,10 @@ var maxDiffLen = diff.MaxLen
 
 // Stats tracks pipeline processing statistics.
 type Stats struct {
-	Total    int
-	Written  int
-	Skipped  int
+	Total       int
+	Written     int
+	Skipped     int
+	SkipReasons map[string]int
 }
 
 // Run reads CommitBench JSONL from inputPath, processes each entry through
@@ -43,19 +44,32 @@ func Run(inputPath, outputPath string) error {
 
 	fmt.Fprintf(os.Stderr, "Done: %d total, %d written, %d skipped\n",
 		stats.Total, stats.Written, stats.Skipped)
+	if len(stats.SkipReasons) > 0 {
+		fmt.Fprintf(os.Stderr, "Skip reasons:\n")
+		for reason, count := range stats.SkipReasons {
+			fmt.Fprintf(os.Stderr, "  %-30s %d\n", reason, count)
+		}
+	}
 	return nil
 }
 
 func process(r io.Reader, w io.Writer) (Stats, error) {
-	var stats Stats
+	stats := Stats{SkipReasons: make(map[string]int)}
 	bw := bufio.NewWriter(w)
 
 	err := ReadEntries(r, func(entry Entry) error {
 		stats.Total++
 
+		if reason := ValidateMessage(entry.Message); reason != "" {
+			stats.Skipped++
+			stats.SkipReasons[reason]++
+			return nil
+		}
+
 		processed := diff.Process(entry.Diff, maxDiffLen)
 		if processed == "" || isAllPlaceholders(processed) {
 			stats.Skipped++
+			stats.SkipReasons["diff-empty"]++
 			return nil
 		}
 

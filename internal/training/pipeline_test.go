@@ -60,7 +60,7 @@ func TestProcess(t *testing.T) {
 				if len(record.Messages) != 3 {
 					t.Fatalf("expected 3 messages, got %d", len(record.Messages))
 				}
-				if record.Messages[0].Role != "system" || record.Messages[0].Content != prompt.Text {
+				if record.Messages[0].Role != "system" || record.Messages[0].Content != prompt.TrainingText {
 					t.Error("system message mismatch")
 				}
 				if record.Messages[1].Role != "user" {
@@ -94,6 +94,20 @@ func TestProcess(t *testing.T) {
 			}),
 			wantWritten: 1,
 			wantSkipped: 0,
+		},
+		{
+			name: "non-conventional message is skipped",
+			input: jsonLine(t, map[string]string{
+				"diff":    cleanDiff,
+				"message": "Update the readme file",
+			}),
+			wantWritten: 0,
+			wantSkipped: 1,
+			checkOutput: func(t *testing.T, output string) {
+				if strings.TrimSpace(output) != "" {
+					t.Error("expected no output for non-conventional message")
+				}
+			},
 		},
 		{
 			name: "entries missing fields are skipped",
@@ -131,6 +145,18 @@ func TestProcess(t *testing.T) {
 					t.Errorf("user message too large: %d chars", len(userContent))
 				}
 			},
+		},
+		{
+			name: "skip reasons are tracked",
+			input: jsonLine(t, map[string]string{
+				"diff":    cleanDiff,
+				"message": "Update readme",
+			}) + "\n" + jsonLine(t, map[string]string{
+				"diff":    lockOnlyDiff,
+				"message": "chore: update deps",
+			}),
+			wantWritten: 0,
+			wantSkipped: 2,
 		},
 	}
 

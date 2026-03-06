@@ -16,7 +16,7 @@ type chatCompletion struct {
 func FormatChatCompletion(userMessage, commitMessage string) ([]byte, error) {
 	record := chatCompletion{
 		Messages: []llm.Message{
-			{Role: "system", Content: prompt.Text},
+			{Role: "system", Content: prompt.TrainingText},
 			{Role: "user", Content: userMessage},
 			{Role: "assistant", Content: commitMessage},
 		},
