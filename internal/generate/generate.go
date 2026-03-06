@@ -15,8 +15,8 @@ import (
 	"github.com/nicholls-inc/commit-massage/internal/prompt"
 )
 
-const maxDiffLen      = 20000
-const defaultTimeout  = 5 // seconds
+var maxDiffLen = diffpkg.MaxLen
+const defaultTimeout  = 30 // seconds
 
 // Run generates a commit message and prepends it to msgFile.
 // source is the second argument passed to prepare-commit-msg by git.
@@ -48,11 +48,7 @@ func Run(msgFile, source string) error {
 	model := envOrDefault("COMMIT_MASSAGE_MODEL", "google/gemma-3n-e4b")
 	baseURL := envOrDefault("COMMIT_MASSAGE_URL", "http://127.0.0.1:1234")
 
-	var userMessage string
-	if recentLog != "" {
-		userMessage = "Recent commits (for style reference):\n" + recentLog + "\n\n"
-	}
-	userMessage += "Files changed:\n" + stat + "\n\nDiff:\n" + diff
+	userMessage := prompt.BuildUserMessage(recentLog, stat, diff)
 
 	client := llm.NewClient(baseURL)
 
