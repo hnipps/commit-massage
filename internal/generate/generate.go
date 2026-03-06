@@ -16,7 +16,7 @@ import (
 )
 
 var maxDiffLen = diffpkg.MaxLen
-const defaultTimeout  = 5 // seconds
+const defaultTimeout  = 30 // seconds
 
 // Run generates a commit message and prepends it to msgFile.
 // source is the second argument passed to prepare-commit-msg by git.

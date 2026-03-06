@@ -96,6 +96,33 @@ func TestProcess(t *testing.T) {
 			wantSkipped: 0,
 		},
 		{
+			name: "PR ref stripped from message",
+			input: jsonLine(t, map[string]string{
+				"diff":    cleanDiff,
+				"message": "feat: add hello function (#42)",
+			}),
+			wantWritten: 1,
+			wantSkipped: 0,
+			checkOutput: func(t *testing.T, output string) {
+				lines := nonEmptyLines(output)
+				if len(lines) != 1 {
+					t.Fatalf("expected 1 line, got %d", len(lines))
+				}
+				var record struct {
+					Messages []struct {
+						Content string `json:"content"`
+					} `json:"messages"`
+				}
+				if err := json.Unmarshal([]byte(lines[0]), &record); err != nil {
+					t.Fatalf("invalid JSON: %v", err)
+				}
+				got := record.Messages[2].Content
+				if got != "feat: add hello function" {
+					t.Errorf("assistant message = %q, want PR ref stripped", got)
+				}
+			},
+		},
+		{
 			name: "non-conventional message is skipped",
 			input: jsonLine(t, map[string]string{
 				"diff":    cleanDiff,

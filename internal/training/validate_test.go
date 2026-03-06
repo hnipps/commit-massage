@@ -5,6 +5,49 @@ import (
 	"testing"
 )
 
+func TestCleanMessage(t *testing.T) {
+	tests := []struct {
+		name string
+		msg  string
+		want string
+	}{
+		{
+			name: "strips trailing PR ref",
+			msg:  "feat: add login endpoint (#42)",
+			want: "feat: add login endpoint",
+		},
+		{
+			name: "strips large PR number",
+			msg:  "fix(auth): handle expired tokens (#12345)",
+			want: "fix(auth): handle expired tokens",
+		},
+		{
+			name: "no PR ref unchanged",
+			msg:  "feat: add login endpoint",
+			want: "feat: add login endpoint",
+		},
+		{
+			name: "PR ref in body preserved",
+			msg:  "feat: add login\n\nRelated to (#42)",
+			want: "feat: add login\n\nRelated to (#42)",
+		},
+		{
+			name: "mid-subject ref preserved",
+			msg:  "fix: resolve (#42) login bug",
+			want: "fix: resolve (#42) login bug",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CleanMessage(tt.msg)
+			if got != tt.want {
+				t.Errorf("CleanMessage(%q) = %q, want %q", tt.msg, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestValidateMessage(t *testing.T) {
 	tests := []struct {
 		name    string

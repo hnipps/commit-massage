@@ -60,6 +60,8 @@ func process(r io.Reader, w io.Writer) (Stats, error) {
 	err := ReadEntries(r, func(entry Entry) error {
 		stats.Total++
 
+		entry.Message = CleanMessage(entry.Message)
+
 		if reason := ValidateMessage(entry.Message); reason != "" {
 			stats.Skipped++
 			stats.SkipReasons[reason]++
